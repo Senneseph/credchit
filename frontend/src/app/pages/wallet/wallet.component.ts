@@ -1,26 +1,26 @@
-import { Component, inject, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, signal, OnInit } from '@angular/core';
+import { DecimalPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService, User, Transaction } from '../../services/api.service';
 
 @Component({
   selector: 'app-wallet',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule, DecimalPipe, DatePipe],
   template: `
     <div class="container">
       <h1>Your Wallet</h1>
-      
-      @if (!selectedUser) {
+
+      @if (!selectedUser()) {
         <section class="user-select card">
           <h2>Create or Select User</h2>
-          
+
           <div class="form-group">
             <h3>Create New User</h3>
-            <input [(ngModel)]="newUser.email" placeholder="Email" type="email">
-            <input [(ngModel)]="newUser.firstName" placeholder="First Name">
-            <input [(ngModel)]="newUser.lastName" placeholder="Last Name">
-            <input [(ngModel)]="newUser.password" placeholder="Password" type="password">
+            <input [(ngModel)]="newUserEmail" placeholder="Email" type="email">
+            <input [(ngModel)]="newUserFirstName" placeholder="First Name">
+            <input [(ngModel)]="newUserLastName" placeholder="Last Name">
+            <input [(ngModel)]="newUserPassword" placeholder="Password" type="password">
             <button class="btn btn-primary" (click)="createUser()">Create User</button>
           </div>
 
@@ -28,7 +28,7 @@ import { ApiService, User, Transaction } from '../../services/api.service';
 
           <div class="users-list">
             <h3>Select Existing User</h3>
-            @for (user of users; track user.id) {
+            @for (user of users(); track user.id) {
               <div class="user-item" (click)="selectUser(user)">
                 <span>{{ user.firstName }} {{ user.lastName }}</span>
                 <span class="email">{{ user.email }}</span>
@@ -40,12 +40,12 @@ import { ApiService, User, Transaction } from '../../services/api.service';
         <section class="wallet-view">
           <div class="balance-card card">
             <div class="balance-header">
-              <h2>{{ selectedUser.firstName }} {{ selectedUser.lastName }}</h2>
-              <button class="btn btn-secondary" (click)="selectedUser = null">Switch User</button>
+              <h2>{{ selectedUser()!.firstName }} {{ selectedUser()!.lastName }}</h2>
+              <button class="btn btn-secondary" (click)="clearSelectedUser()">Switch User</button>
             </div>
-            <div class="balance-amount">\${{ selectedUser.balance?.amount || 0 | number:'1.2-2' }}</div>
-            <div class="cred-level">Cred Level: {{ selectedUser.credLevel }}</div>
-            
+            <div class="balance-amount">\${{ selectedUser()!.balance?.amount || 0 | number:'1.2-2' }}</div>
+            <div class="cred-level">Cred Level: {{ selectedUser()!.credLevel }}</div>
+
             <div class="topup-form">
               <input [(ngModel)]="topupAmount" type="number" placeholder="Amount to add">
               <button class="btn btn-success" (click)="topup()">Top Up</button>
@@ -54,7 +54,7 @@ import { ApiService, User, Transaction } from '../../services/api.service';
 
           <div class="transactions card">
             <h3>Recent Transactions</h3>
-            @for (tx of transactions; track tx.id) {
+            @for (tx of transactions(); track tx.id) {
               <div class="tx-item">
                 <div class="tx-info">
                   <span class="tx-merchant">{{ tx.toMerchant?.businessName || 'Unknown' }}</span>
@@ -100,39 +100,58 @@ import { ApiService, User, Transaction } from '../../services/api.service';
 })
 export class WalletComponent implements OnInit {
   private api = inject(ApiService);
-  users: User[] = [];
-  selectedUser: User | null = null;
-  transactions: Transaction[] = [];
+
+  // Signals for zoneless change detection
+  users = signal<User[]>([]);
+  selectedUser = signal<User | null>(null);
+  transactions = signal<Transaction[]>([]);
+
+  // Form fields
   topupAmount = 25;
-  newUser = { email: '', firstName: '', lastName: '', password: '' };
+  newUserEmail = '';
+  newUserFirstName = '';
+  newUserLastName = '';
+  newUserPassword = '';
 
   ngOnInit() { this.loadUsers(); }
 
   loadUsers() {
-    this.api.getUsers().subscribe(users => this.users = users);
+    this.api.getUsers().subscribe(users => this.users.set(users));
   }
 
   selectUser(user: User) {
-    this.selectedUser = user;
+    this.selectedUser.set(user);
     this.api.getTransactions().subscribe(txs => {
-      this.transactions = txs.filter(tx => tx.fromUser?.id === user.id);
+      this.transactions.set(txs.filter(tx => tx.fromUser?.id === user.id));
     });
   }
 
+  clearSelectedUser() {
+    this.selectedUser.set(null);
+  }
+
   createUser() {
-    this.api.createUser(this.newUser).subscribe(user => {
-      this.users.push(user);
+    const newUser = {
+      email: this.newUserEmail,
+      firstName: this.newUserFirstName,
+      lastName: this.newUserLastName,
+      password: this.newUserPassword
+    };
+    this.api.createUser(newUser).subscribe(user => {
+      this.users.update(users => [...users, user]);
       this.selectUser(user);
-      this.newUser = { email: '', firstName: '', lastName: '', password: '' };
+      this.newUserEmail = '';
+      this.newUserFirstName = '';
+      this.newUserLastName = '';
+      this.newUserPassword = '';
     });
   }
 
   topup() {
-    if (!this.selectedUser) return;
-    this.api.topup(this.selectedUser.id, this.topupAmount).subscribe(balance => {
-      if (this.selectedUser) {
-        this.selectedUser.balance = balance;
-      }
+    const user = this.selectedUser();
+    if (!user) return;
+    this.api.topup(user.id, this.topupAmount).subscribe(balance => {
+      this.selectedUser.update(u => u ? { ...u, balance } : null);
     });
   }
 }

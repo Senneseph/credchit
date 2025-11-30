@@ -1,12 +1,17 @@
-import { Component, inject, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ApiService } from '../../services/api.service';
+
+interface HealthStatus {
+  status: string;
+  service: string;
+  timestamp: string;
+}
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [RouterLink],
   template: `
     <div class="container">
       <section class="hero">
@@ -40,8 +45,8 @@ import { ApiService } from '../../services/api.service';
 
       <section class="status card">
         <h3>System Status</h3>
-        @if (health) {
-          <p class="status-ok">✅ {{ health.service }} - {{ health.status }}</p>
+        @if (health()) {
+          <p class="status-ok">✅ {{ health()!.service }} - {{ health()!.status }}</p>
         } @else {
           <p class="status-loading">Checking API...</p>
         }
@@ -100,12 +105,14 @@ import { ApiService } from '../../services/api.service';
 })
 export class HomeComponent implements OnInit {
   private api = inject(ApiService);
-  health: { status: string; service: string; timestamp: string } | null = null;
+
+  // Using signals for zoneless change detection
+  health = signal<HealthStatus | null>(null);
 
   ngOnInit() {
     this.api.getHealth().subscribe({
-      next: (data) => this.health = data,
-      error: () => this.health = null,
+      next: (data) => this.health.set(data),
+      error: () => this.health.set(null),
     });
   }
 }

@@ -4,6 +4,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { AppComponent } from './app/app.component';
 import { routes } from './app/app.routes';
 
+// Angular 21 is zoneless by default - no zone.js or provideZoneChangeDetection needed
 bootstrapApplication(AppComponent, {
   providers: [
     provideRouter(routes),

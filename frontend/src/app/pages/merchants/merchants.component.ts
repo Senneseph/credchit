@@ -1,25 +1,25 @@
-import { Component, inject, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, signal, OnInit } from '@angular/core';
+import { DecimalPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService, Merchant, Transaction } from '../../services/api.service';
 
 @Component({
   selector: 'app-merchants',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule, DecimalPipe, DatePipe],
   template: `
     <div class="container">
       <h1>Merchant Portal</h1>
-      
-      @if (!selectedMerchant) {
+
+      @if (!selectedMerchant()) {
         <section class="merchant-select card">
           <h2>Register or Select Merchant</h2>
-          
+
           <div class="form-group">
             <h3>Register New Business</h3>
-            <input [(ngModel)]="newMerchant.businessName" placeholder="Business Name">
-            <input [(ngModel)]="newMerchant.email" placeholder="Email" type="email">
-            <input [(ngModel)]="newMerchant.password" placeholder="Password" type="password">
+            <input [(ngModel)]="newBusinessName" placeholder="Business Name">
+            <input [(ngModel)]="newEmail" placeholder="Email" type="email">
+            <input [(ngModel)]="newPassword" placeholder="Password" type="password">
             <button class="btn btn-primary" (click)="createMerchant()">Register</button>
           </div>
 
@@ -27,7 +27,7 @@ import { ApiService, Merchant, Transaction } from '../../services/api.service';
 
           <div class="merchants-list">
             <h3>Select Existing Merchant</h3>
-            @for (merchant of merchants; track merchant.id) {
+            @for (merchant of merchants(); track merchant.id) {
               <div class="merchant-item" (click)="selectMerchant(merchant)">
                 <span class="biz-name">{{ merchant.businessName }}</span>
                 <span class="badge">Trust Level {{ merchant.trustBadgeLevel }}</span>
@@ -38,28 +38,28 @@ import { ApiService, Merchant, Transaction } from '../../services/api.service';
       } @else {
         <section class="merchant-dashboard">
           <div class="header-row">
-            <h2>{{ selectedMerchant.businessName }}</h2>
-            <button class="btn btn-secondary" (click)="selectedMerchant = null">Switch</button>
+            <h2>{{ selectedMerchant()!.businessName }}</h2>
+            <button class="btn btn-secondary" (click)="clearSelectedMerchant()">Switch</button>
           </div>
 
           <div class="stats-grid">
             <div class="stat card">
               <div class="stat-label">Balance</div>
-              <div class="stat-value">\${{ selectedMerchant.balance?.amount || 0 | number:'1.2-2' }}</div>
+              <div class="stat-value">\${{ selectedMerchant()!.balance?.amount || 0 | number:'1.2-2' }}</div>
             </div>
             <div class="stat card">
               <div class="stat-label">Trust Level</div>
-              <div class="stat-value">{{ selectedMerchant.trustBadgeLevel }}</div>
+              <div class="stat-value">{{ selectedMerchant()!.trustBadgeLevel }}</div>
             </div>
             <div class="stat card">
               <div class="stat-label">Transactions</div>
-              <div class="stat-value">{{ transactions.length }}</div>
+              <div class="stat-value">{{ transactions().length }}</div>
             </div>
           </div>
 
           <div class="transactions card">
             <h3>Recent Payments</h3>
-            @for (tx of transactions; track tx.id) {
+            @for (tx of transactions(); track tx.id) {
               <div class="tx-item">
                 <div class="tx-info">
                   <span class="tx-from">{{ tx.fromUser?.firstName }} {{ tx.fromUser?.lastName }}</span>
@@ -104,29 +104,46 @@ import { ApiService, Merchant, Transaction } from '../../services/api.service';
 })
 export class MerchantsComponent implements OnInit {
   private api = inject(ApiService);
-  merchants: Merchant[] = [];
-  selectedMerchant: Merchant | null = null;
-  transactions: Transaction[] = [];
-  newMerchant = { businessName: '', email: '', password: '' };
+
+  // Signals for zoneless change detection
+  merchants = signal<Merchant[]>([]);
+  selectedMerchant = signal<Merchant | null>(null);
+  transactions = signal<Transaction[]>([]);
+
+  // Form fields
+  newBusinessName = '';
+  newEmail = '';
+  newPassword = '';
 
   ngOnInit() { this.loadMerchants(); }
 
   loadMerchants() {
-    this.api.getMerchants().subscribe(merchants => this.merchants = merchants);
+    this.api.getMerchants().subscribe(merchants => this.merchants.set(merchants));
   }
 
   selectMerchant(merchant: Merchant) {
-    this.selectedMerchant = merchant;
+    this.selectedMerchant.set(merchant);
     this.api.getTransactions().subscribe(txs => {
-      this.transactions = txs.filter(tx => tx.toMerchant?.id === merchant.id);
+      this.transactions.set(txs.filter(tx => tx.toMerchant?.id === merchant.id));
     });
   }
 
+  clearSelectedMerchant() {
+    this.selectedMerchant.set(null);
+  }
+
   createMerchant() {
-    this.api.createMerchant(this.newMerchant).subscribe(merchant => {
-      this.merchants.push(merchant);
+    const newMerchant = {
+      businessName: this.newBusinessName,
+      email: this.newEmail,
+      password: this.newPassword
+    };
+    this.api.createMerchant(newMerchant).subscribe(merchant => {
+      this.merchants.update(merchants => [...merchants, merchant]);
       this.selectMerchant(merchant);
-      this.newMerchant = { businessName: '', email: '', password: '' };
+      this.newBusinessName = '';
+      this.newEmail = '';
+      this.newPassword = '';
     });
   }
 }

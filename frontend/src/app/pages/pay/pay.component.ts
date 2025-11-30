@@ -1,23 +1,23 @@
-import { Component, inject, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, signal, computed, OnInit } from '@angular/core';
+import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService, User, Merchant } from '../../services/api.service';
 
 @Component({
   selector: 'app-pay',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule, DecimalPipe],
   template: `
     <div class="container">
       <h1>Make a Payment</h1>
-      
+
       <section class="pay-form card">
         <div class="form-row">
           <div class="form-group">
             <label>From User</label>
             <select [(ngModel)]="selectedUserId">
               <option value="">Select User</option>
-              @for (user of users; track user.id) {
+              @for (user of users(); track user.id) {
                 <option [value]="user.id">
                   {{ user.firstName }} {{ user.lastName }} (\${{ user.balance?.amount || 0 | number:'1.2-2' }})
                 </option>
@@ -29,7 +29,7 @@ import { ApiService, User, Merchant } from '../../services/api.service';
             <label>To Merchant</label>
             <select [(ngModel)]="selectedMerchantId">
               <option value="">Select Merchant</option>
-              @for (merchant of merchants; track merchant.id) {
+              @for (merchant of merchants(); track merchant.id) {
                 <option [value]="merchant.id">{{ merchant.businessName }}</option>
               }
             </select>
@@ -52,9 +52,9 @@ import { ApiService, User, Merchant } from '../../services/api.service';
           Pay \${{ amount | number:'1.2-2' }}
         </button>
 
-        @if (message) {
-          <div class="message" [class.success]="success" [class.error]="!success">
-            {{ message }}
+        @if (message()) {
+          <div class="message" [class.success]="success()" [class.error]="!success()">
+            {{ message() }}
           </div>
         }
       </section>
@@ -62,7 +62,7 @@ import { ApiService, User, Merchant } from '../../services/api.service';
       <section class="quick-amounts">
         <p>Quick amounts:</p>
         <div class="amounts">
-          @for (amt of [5, 10, 20, 50]; track amt) {
+          @for (amt of quickAmounts; track amt) {
             <button class="btn btn-secondary" (click)="amount = amt">\${{ amt }}</button>
           }
         </div>
@@ -98,18 +98,25 @@ import { ApiService, User, Merchant } from '../../services/api.service';
 })
 export class PayComponent implements OnInit {
   private api = inject(ApiService);
-  users: User[] = [];
-  merchants: Merchant[] = [];
+
+  // Signals for zoneless change detection
+  users = signal<User[]>([]);
+  merchants = signal<Merchant[]>([]);
+  message = signal('');
+  success = signal(false);
+
+  // Form fields (regular properties work with ngModel + user events)
   selectedUserId = '';
   selectedMerchantId = '';
   amount = 10;
   description = '';
-  message = '';
-  success = false;
+
+  // Static data
+  readonly quickAmounts = [5, 10, 20, 50];
 
   ngOnInit() {
-    this.api.getUsers().subscribe(users => this.users = users);
-    this.api.getMerchants().subscribe(merchants => this.merchants = merchants);
+    this.api.getUsers().subscribe(users => this.users.set(users));
+    this.api.getMerchants().subscribe(merchants => this.merchants.set(merchants));
   }
 
   canPay(): boolean {
@@ -118,17 +125,17 @@ export class PayComponent implements OnInit {
 
   pay() {
     if (!this.canPay()) return;
-    
+
     this.api.pay(this.selectedUserId, this.selectedMerchantId, this.amount, this.description).subscribe({
       next: (tx) => {
-        this.message = `Payment successful! Transaction ID: ${tx.id.slice(0, 8)}...`;
-        this.success = true;
+        this.message.set(`Payment successful! Transaction ID: ${tx.id.slice(0, 8)}...`);
+        this.success.set(true);
         // Refresh users to get updated balances
-        this.api.getUsers().subscribe(users => this.users = users);
+        this.api.getUsers().subscribe(users => this.users.set(users));
       },
       error: (err) => {
-        this.message = err.error?.message || 'Payment failed. Check your balance.';
-        this.success = false;
+        this.message.set(err.error?.message || 'Payment failed. Check your balance.');
+        this.success.set(false);
       }
     });
   }
