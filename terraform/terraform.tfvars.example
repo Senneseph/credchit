@@ -1,0 +1,6 @@
+do_token    = "your-digitalocean-api-token"
+droplet_ip  = "167.71.191.234"
+manage_dns  = true
+domain_root = "iffuso.com"
+subdomain   = "credchit"
+

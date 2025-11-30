@@ -1,0 +1,60 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: credchit-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-credchit}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-credchit}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-credchit} -d ${POSTGRES_DB:-credchit}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - credchit-network
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: credchit-backend
+    ports:
+      - "3004:3000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-credchit}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-credchit}
+      NODE_ENV: production
+      PORT: 3000
+      BASE_URL: https://${TARGET_DOMAIN:-credchit.iffuso.com}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - credchit-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        API_URL: https://${TARGET_DOMAIN:-credchit.iffuso.com}/api
+    container_name: credchit-frontend
+    ports:
+      - "4204:80"
+    depends_on:
+      - backend
+    networks:
+      - credchit-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  credchit-network:
+    driver: bridge
+
