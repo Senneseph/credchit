@@ -5,6 +5,9 @@ WORKDIR /app
 ARG API_URL
 ENV API_URL=$API_URL
 
+# Install ImageMagick with SVG support and rsvg-convert for icon generation
+RUN apk add --no-cache imagemagick librsvg rsvg-convert
+
 COPY package*.json ./
 
 RUN npm install
@@ -15,6 +18,21 @@ COPY . .
 RUN if [ -n "$API_URL" ]; then \
       echo "export const environment = { production: true, apiUrl: '$API_URL' };" > src/environments/environment.ts; \
     fi
+
+# Generate PWA icons from SVG using rsvg-convert (more reliable for SVG)
+RUN mkdir -p src/assets && \
+    for size in 72 96 128 144 152 192 384 512; do \
+      rsvg-convert -w $size -h $size src/assets/logo.svg -o src/assets/icon-${size}x${size}.png; \
+    done && \
+    rsvg-convert -w 32 -h 32 src/assets/logo.svg -o src/assets/favicon-32x32.png && \
+    rsvg-convert -w 16 -h 16 src/assets/logo.svg -o src/assets/favicon-16x16.png && \
+    rsvg-convert -w 180 -h 180 src/assets/logo.svg -o src/assets/apple-touch-icon.png && \
+    rsvg-convert -w 96 -h 96 src/assets/logo.svg -o src/assets/icon-wallet.png && \
+    rsvg-convert -w 96 -h 96 src/assets/logo.svg -o src/assets/icon-pay.png && \
+    rsvg-convert -w 96 -h 96 src/assets/logo.svg -o src/assets/icon-merchant.png && \
+    rsvg-convert -w 400 -h 400 src/assets/logo.svg -o /tmp/logo-400.png && \
+    convert /tmp/logo-400.png -gravity center -background "#0f172a" -extent 1200x630 src/assets/og-image.png && \
+    ls -la src/assets/
 
 RUN npm run build:prod
 

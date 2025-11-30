@@ -1,0 +1,116 @@
+{
+  "name": "Credchit - Zero-Fee Payments",
+  "short_name": "Credchit",
+  "description": "Zero-fee, ACH-backed, crypto-compatible instant payment platform. Send and receive money instantly with no transaction fees.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f172a",
+  "theme_color": "#6366f1",
+  "scope": "/",
+  "lang": "en-US",
+  "dir": "ltr",
+  "categories": ["finance", "utilities"],
+  "icons": [
+    {
+      "src": "assets/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "assets/icon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "assets/icon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "assets/icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "assets/icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "assets/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "assets/icon-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "assets/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "assets/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "assets/screenshot-mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Credchit Mobile - Wallet View"
+    },
+    {
+      "src": "assets/screenshot-desktop.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Credchit Desktop - Dashboard"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Wallet",
+      "short_name": "Wallet",
+      "description": "View your balance and transactions",
+      "url": "/wallet",
+      "icons": [{ "src": "assets/icon-wallet.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Pay",
+      "short_name": "Pay",
+      "description": "Make a payment",
+      "url": "/pay",
+      "icons": [{ "src": "assets/icon-pay.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Merchants",
+      "short_name": "Merchants",
+      "description": "Manage your merchant account",
+      "url": "/merchants",
+      "icons": [{ "src": "assets/icon-merchant.png", "sizes": "96x96" }]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "handle_links": "preferred",
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  }
+}
+
